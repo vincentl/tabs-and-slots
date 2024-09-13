@@ -92,23 +92,14 @@ def steps(src, dst, options, transform, svg):
     mark = 0 * unit
     for move in plan:
         match move:
-            case 's':
-                slot = slot_path(src + mark - 1.625 * notch + kerf, step - kerf, notch * (1 - kerf_norm/abs(notch)))
-                slot.transform = transform
-                slots.add(slot)
-            case 'x':
-                slot = slot_path(src + mark - 1.625 * notch + kerf - phantom, step - kerf, notch * (1 - kerf_norm/abs(notch)))
+            case str(mode):
+                base = src + mark - 1.625 * notch + kerf - (phantom if mode == 'x' else 0 * phantom)
+                slot = slot_path(base, step - kerf, notch * (1 - kerf_norm/abs(notch)))
                 slot.transform = transform
                 slots.add(slot)
             case move:
                 mark = move + mark
                 result += [vec_to_line(mark)]
-
-#        if (i & 0x01) == slot_parity:
-#            slot = slot_path(src + mark - 1.5 * notch + 2*kerf, step - 2*kerf, notch * (1 - kerf_norm/abs(notch)))
-#            slot.transform = transform
-#            slots.add(slot)
-
     return result, slots
 
 class TabSlot(inkex.EffectExtension):
