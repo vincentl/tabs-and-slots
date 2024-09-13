@@ -85,15 +85,24 @@ def steps(src, dst, options, transform, svg):
 
     match options.operation:
         case 'tab':
-            plan = create_plan([step - phantom       ], options.count - 1, [-notch, step + kerf, notch, step - kerf], [-notch, step + kerf, notch, step - phantom       ])
+            plan = create_plan([     step - phantom       ], options.count - 1, [-notch, 's', step + kerf, notch, step - kerf], [-notch, 's', step + kerf, notch, step - phantom       ])
         case 'slot':
-            plan = create_plan([step - phantom + kerf], options.count - 1, [notch, step - kerf, -notch, step + kerf], [notch, step - kerf, -notch, step - phantom + kerf])
+            plan = create_plan(['x', step - phantom + kerf], options.count - 1, [notch, step - kerf, -notch, 's', step + kerf], [notch, step - kerf, -notch, 's', step - phantom + kerf])
 
     mark = 0 * unit
     for move in plan:
-        mark = move + mark
-        result += [vec_to_line(mark)]
-
+        match move:
+            case 's':
+                slot = slot_path(src + mark - 1.625 * notch + kerf, step - kerf, notch * (1 - kerf_norm/abs(notch)))
+                slot.transform = transform
+                slots.add(slot)
+            case 'x':
+                slot = slot_path(src + mark - 1.625 * notch + kerf - phantom, step - kerf, notch * (1 - kerf_norm/abs(notch)))
+                slot.transform = transform
+                slots.add(slot)
+            case move:
+                mark = move + mark
+                result += [vec_to_line(mark)]
 
 #        if (i & 0x01) == slot_parity:
 #            slot = slot_path(src + mark - 1.5 * notch + 2*kerf, step - 2*kerf, notch * (1 - kerf_norm/abs(notch)))
