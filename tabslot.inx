@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<inkscape-extension xmlns="http://www.inkscape.org/namespace/inkscape/extension">
+    <name>Tabs &amp; Slots</name>
+    <id>org.inkscape.filter.tabslot</id>
+
+    <label>Add tabs along select line path</label>
+    <separator />
+    <param name="material" type="float" gui-text="Material Thickness in mm">3.0</param>
+    <param name="kerf" type="int" gui-text="Laser Kerf in µm" min="0" max="1000">800</param>
+    <param name="count" type="int" gui-text="Steps" min="1" max="1024">2</param>
+    <param name="operation" type="optiongroup" appearance="radio/combo" gui-text="Operation">
+        <option value="slot">Create Slots</option>
+        <option value="tab">Create Tabs</option>
+    </param>
+    <param name="normal" type="optiongroup" appearance="radio/combo" gui-text="Normal Vector">
+        <option value="positive">Positive</option>
+        <option value="negative">Negative</option>
+    </param>
+    <separator />
+
+    <param name="slots" type="bool" gui-text="Add a slot for each tab">false</param>
+    <param name="phantom" type="bool" gui-text="Bookend path with phantom material">false</param>
+    <param name="label" type="bool" gui-text="Label path start">true</param>
+    
+    <effect needs-live-preview="true">
+        <object-type>path</object-type>
+        <effects-menu>
+            <submenu name="Modify Path"/>
+        </effects-menu>
+    </effect>
+    <script>
+        <command location="extensions" interpreter="python">tabslot.py</command>
+    </script>
+</inkscape-extension>
