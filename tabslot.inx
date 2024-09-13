@@ -3,7 +3,7 @@
     <name>Tabs &amp; Slots</name>
     <id>org.inkscape.filter.tabslot</id>
 
-    <label>Add tabs along select line path</label>
+    <label>Add tabs or slots along select line path</label>
     <separator />
     <param name="material" type="float" gui-text="Material Thickness in mm">3.0</param>
     <param name="kerf" type="int" gui-text="Laser Kerf in µm" min="0" max="1000">800</param>
@@ -20,7 +20,6 @@
 
     <param name="slots" type="bool" gui-text="Add a slot for each tab">false</param>
     <param name="phantom" type="bool" gui-text="Bookend path with phantom material">false</param>
-    <param name="label" type="bool" gui-text="Label path start">true</param>
     
     <effect needs-live-preview="true">
         <object-type>path</object-type>

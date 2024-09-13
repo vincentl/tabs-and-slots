@@ -23,23 +23,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 '''
 import inkex
 
-def draw_start_label(svg, point, transform):
-    label = svg.add(inkex.TextElement(x=str(point.x),y=str(point.y)))
-    label.transform = transform
-    label.style = {
-        "text-align": "center",
-        "vertical-align": "top",
-        "text-anchor": "middle",
-        "font-size": "6px",
-        "fill-opacity": "1.0",
-        "stroke": "none",
-        "font-weight": "normal",
-        "font-style": "normal",
-        "fill": "#ff0000",
-    }
-    label.text = 'S'
-    label.label = 'start label'
-
 def slot_path(src, step, notch):
     path = inkex.paths.Path()
     path.append(inkex.paths.Move(src.x, src.y))
@@ -128,7 +111,6 @@ class TabSlot(inkex.EffectExtension):
         options.add_argument('-o', '--operation', type=str, default='slots', help='cut tabs or slots')
         options.add_argument('-s', '--slots', type=inkex.Boolean, default=False, help='add matching slots')
         options.add_argument('-p', '--phantom', type=inkex.Boolean, default=False, help='add phantom material at ends')
-        options.add_argument('-l', '--label', type=inkex.Boolean, default=True, help='label start of path')
 
     def effect(self):
         # Iterate over the selected paths
@@ -148,9 +130,6 @@ class TabSlot(inkex.EffectExtension):
                     # Add optional slot group
                     if self.options.slots:
                         self.svg.add(slots)
-                    # Add optional start label
-                    if self.options.label:
-                        draw_start_label(self.svg, proxy.previous_end_point, transform)
             node.path = result
 
 if __name__ == '__main__':
