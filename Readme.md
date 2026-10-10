@@ -39,3 +39,7 @@ The result is a single path. Its fill covers only the material you keep: the out
 
 - Run **Join** on all the sides at once. Sides can be in any order or direction.
 - To add decoration such as a pattern over an inner hole, convert it to a filled shape (**Path → Stroke to Path**), overlap it with the frame, and **Path → Union** the two.
+
+## License
+
+MIT. See [LICENSE](LICENSE).
