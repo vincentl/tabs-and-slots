@@ -188,7 +188,7 @@ class TabSlot(inkex.EffectExtension):
         options.add_argument('--tab', type=str, default='edge', help='notebook page: edge or shape')
         options.add_argument('-a', '--action', type=str, default='split', help='shape action: split or join')
         options.add_argument('-m', '--material', type=float, default=3.0, help='material thickness in mm')
-        options.add_argument('-k', '--kerf', type=float, default=800, help='laser kerf in µm')
+        options.add_argument('-k', '--kerf', type=float, default=160, help='laser kerf in µm')
         options.add_argument('-n', '--count', type=int, default=2, help='number of steps to take along path')
         options.add_argument('-t', '--normal', type=str, default='positive', help='normal vector direction')
         options.add_argument('-o', '--operation', type=str, default='slot', help='cut tabs or slots')

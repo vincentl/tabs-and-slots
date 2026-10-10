@@ -17,7 +17,7 @@
             <label>Add tabs or slots along the selected side</label>
             <separator />
             <param name="material" type="float" gui-text="Material Thickness in mm">3.0</param>
-            <param name="kerf" type="int" gui-text="Laser Kerf in µm" min="0" max="1000">800</param>
+            <param name="kerf" type="int" gui-text="Laser Kerf in µm" min="0" max="1000">160</param>
             <param name="count" type="int" gui-text="Steps" min="1" max="1024">2</param>
             <param name="operation" type="optiongroup" appearance="radio/combo" gui-text="Operation">
                 <option value="slot">Create Slots</option>
