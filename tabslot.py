@@ -76,24 +76,34 @@ def steps(src, dst, options, transform, svg):
 
     full = dst - src                                                  # vector pointed along the edge
     unit = full/abs(full)                                             # unit vector pointing the edge
-    phantom = material * unit if options.phantom else 0 * unit        # phantom vector
+    match options.phantom:                                            # phantom vectors
+        case 'none':
+            start_phantom, finish_phantom = 0*unit, 0*unit
+        case 'both':
+            start_phantom, finish_phantom = material*unit, material*unit
+        case 'start':
+            start_phantom, finish_phantom = material*unit, 0*unit
+        case 'finish':
+            start_phantom, finish_phantom = 0*unit, material*unit
+    phantom = start_phantom + finish_phantom
+
     kerf = kerf_norm * unit                                           # kerf correction in direction of edge
-    step = (full + 2 * phantom - kerf) / (1 + 2*options.count)        # final edge length of each step
+    step = (full + phantom - kerf) / (1 + 2*options.count)            # final edge length of each step
     notch = inkex.transforms.Vector2d(-full.y, full.x)                # perpendicular
     notch = material * notch / abs(notch)                             # perpendicular equal to material thickness
     notch = notch if options.normal == 'positive' else -notch
 
     match options.operation:
         case 'tab':
-            plan = create_plan([     step - phantom       ], options.count - 1, [-notch, 's', step + kerf, notch, step - kerf], [-notch, 's', step + kerf, notch, step - phantom       ])
+            plan = create_plan([     step - start_phantom       ], options.count - 1, [-notch, 's', step + kerf, notch, step - kerf], [-notch, 's', step + kerf, notch, step - finish_phantom       ])
         case 'slot':
-            plan = create_plan(['x', step - phantom + kerf], options.count - 1, [notch, step - kerf, -notch, 's', step + kerf], [notch, step - kerf, -notch, 's', step - phantom + kerf])
+            plan = create_plan(['x', step - start_phantom + kerf], options.count - 1, [notch, step - kerf, -notch, 's', step + kerf], [notch, step - kerf, -notch, 's', step - finish_phantom + kerf])
 
     mark = 0 * unit
     for move in plan:
         match move:
             case str(mode):
-                base = src + mark - 1.625 * notch + kerf - (phantom if mode == 'x' else 0 * phantom)
+                base = src + mark - 1.625 * notch + kerf - (start_phantom if mode == 'x' else 0 * start_phantom)
                 slot = slot_path(base, step - kerf, notch * (1 - kerf_norm/abs(notch)))
                 slot.transform = transform
                 slots.add(slot)
@@ -102,19 +112,106 @@ def steps(src, dst, options, transform, svg):
                 result += [vec_to_line(mark)]
     return result, slots
 
+def join(nodes, svg):
+    # Collect every selected path in document coordinates
+    pieces = [node.path.to_absolute().transform(node.composed_transform()) for node in nodes]
+    tolerance = svg.to_dimensionless('0.01mm')
+    near = lambda a, b: abs(a - b) < tolerance
+    first = lambda p: inkex.transforms.Vector2d(*p[0].args[-2:])
+    last = lambda p: list(p.end_points)[-1]
+    is_closed = lambda p: p[-1].letter in 'Zz' or near(first(p), last(p))
+
+    closed = [p for p in pieces if is_closed(p)]
+    open_ = [p for p in pieces if not is_closed(p)]
+
+    # Chain open pieces end-to-start (reversing when needed) into closed loops
+    loops = []
+    while open_:
+        loop = open_.pop(0)
+        while not near(first(loop), last(loop)):
+            for i, piece in enumerate(open_):
+                if near(last(loop), first(piece)):
+                    break
+                if near(last(loop), last(piece)):
+                    piece = piece.reverse()
+                    break
+            else:
+                break                                                 # dead end - leave loop open
+            open_.pop(i)
+            loop = inkex.paths.Path(list(loop) + list(piece)[1:])     # drop the joining Move
+        loops.append(loop)
+
+    # Combine outer loops and inner shapes into one path; evenodd fills the area between them
+    combined = inkex.paths.Path()
+    for loop in loops + closed:
+        if loop[-1].letter not in 'Zz':
+            loop.append(inkex.paths.ZoneClose())
+        combined += loop
+
+    target = nodes[0]
+    element = inkex.PathElement()
+    element.style = target.style
+    element.style['fill-rule'] = 'evenodd'
+    element.path = combined.transform(-target.getparent().composed_transform())
+    target.addprevious(element)
+    for node in nodes:
+        node.delete()
+    return element
+
+SHAPES = (inkex.PathElement, inkex.Rectangle, inkex.Circle, inkex.Ellipse, inkex.Polygon, inkex.Polyline, inkex.Line)
+
+def split(node):
+    # Replace a shape with one open path per side, so each side can get its own tab/slot plan
+    path = node.path.to_absolute().to_non_shorthand()
+    sides = []
+    for proxy in path.proxy_iterator():
+        if proxy.letter == 'M':
+            continue
+        if proxy.letter == 'Z':
+            if abs(proxy.end_point - proxy.previous_end_point) < 1e-9:
+                continue                                              # closing segment has no length
+            command = inkex.paths.Line(*proxy.end_point)
+        else:
+            command = proxy.command
+        side = inkex.PathElement()
+        side.path = inkex.paths.Path([inkex.paths.Move(*proxy.previous_end_point), command])
+        side.style = node.style
+        side.transform = node.transform
+        node.addprevious(side)
+        side.set_random_id("side")
+        sides.append(side)
+    node.delete()
+    return sides
+
 class TabSlot(inkex.EffectExtension):
     def add_arguments(self, options):
+        options.add_argument('--tab', type=str, default='edge', help='notebook page: edge or shape')
+        options.add_argument('-a', '--action', type=str, default='split', help='shape action: split or join')
         options.add_argument('-m', '--material', type=float, default=3.0, help='material thickness in mm')
-        options.add_argument('-k', '--kerf', type=float, default=0.08, help='laser kerf in mm')
+        options.add_argument('-k', '--kerf', type=float, default=800, help='laser kerf in µm')
         options.add_argument('-n', '--count', type=int, default=2, help='number of steps to take along path')
         options.add_argument('-t', '--normal', type=str, default='positive', help='normal vector direction')
-        options.add_argument('-o', '--operation', type=str, default='slots', help='cut tabs or slots')
+        options.add_argument('-o', '--operation', type=str, default='slot', help='cut tabs or slots')
         options.add_argument('-s', '--slots', type=inkex.Boolean, default=False, help='add matching slots')
-        options.add_argument('-p', '--phantom', type=inkex.Boolean, default=False, help='add phantom material at ends')
+        options.add_argument('-p', '--phantom', type=str, default='none', help='add phantom material at ends')
 
     def effect(self):
+        # Older Inkscape versions pass the notebook page name wrapped in quotes
+        page = self.options.tab.strip('"')
+        if page == 'shape':
+            nodes = list(self.svg.selection.filter(*SHAPES).values())
+            if not nodes:
+                raise inkex.AbortExtension('Split/Join: select a rectangle or path first.')
+            if self.options.action == 'split':
+                for node in nodes:
+                    split(node)
+            else:
+                join(nodes, self.svg)
+            return
         # Iterate over the selected paths
-        for node in self.svg.selection.get(inkex.PathElement):
+        if not self.svg.selection.filter(inkex.PathElement):
+            raise inkex.AbortExtension('Tabs & Slots: select a side to add tabs or slots to. To split a rectangle into sides, switch to the Split/Join tab.')
+        for node in self.svg.selection.filter(inkex.PathElement):
             transform = node.composed_transform()
             path = node.path.to_absolute()
             result = []
